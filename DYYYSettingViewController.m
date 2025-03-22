@@ -142,6 +142,7 @@ typedef NS_ENUM(NSInteger, DYYYSettingItemType) {
             [DYYYSettingItem itemWithTitle:@"设置朋友标题" key:@"DYYYFriendsTitle" type:DYYYSettingItemTypeTextField placeholder:@"不填默认"],
             [DYYYSettingItem itemWithTitle:@"设置消息标题" key:@"DYYYMsgTitle" type:DYYYSettingItemTypeTextField placeholder:@"不填默认"],
             [DYYYSettingItem itemWithTitle:@"设置我的标题" key:@"DYYYSelfTitle" type:DYYYSettingItemTypeTextField placeholder:@"不填默认"]
+            [DYYYSettingItem itemWithTitle:@"自定背景图片" key:@"DYYYSelectBackgroundImage" type:DYYYSettingItemTypeSwitch]
         ],
         @[
             [DYYYSettingItem itemWithTitle:@"隐藏全屏观看" key:@"DYYYisHiddenEntry" type:DYYYSettingItemTypeSwitch],
@@ -430,7 +431,12 @@ typedef NS_ENUM(NSInteger, DYYYSettingItemType) {
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     DYYYSettingItem *item = self.settingSections[indexPath.section][indexPath.row];
-    if (item.type == DYYYSettingItemTypeSpeedPicker) {
+    if ([item.title isEqualToString:@"自定背景图片"]) {
+        UIImagePickerController *imagePicker = [[UIImagePickerController alloc] init];
+        imagePicker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+        imagePicker.delegate = self;
+        [self presentViewController:imagePicker animated:YES completion:nil];
+    } else if (item.type == DYYYSettingItemTypeSpeedPicker) {
         [self showSpeedPicker];
     }
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -512,6 +518,46 @@ typedef NS_ENUM(NSInteger, DYYYSettingItemType) {
     }];
     
     [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:sender.tag] withRowAnimation:UITableViewRowAnimationFade];
+}
+
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info {
+    [picker dismissViewControllerAnimated:YES completion:nil];
+
+    UIImage *selectedImage = info[UIImagePickerControllerOriginalImage];
+    if (selectedImage) {
+        // 移除原有的模糊效果和覆盖层
+        [self.blurEffectView removeFromSuperview];
+        [self.vibrancyEffectView removeFromSuperview];
+        for (UIView *subview in self.view.subviews) {
+            if ([subview.backgroundColor isEqual:[UIColor colorWithWhite:0 alpha:0.3]]) {
+                [subview removeFromSuperview];
+            }
+        }
+
+        // 设置新的背景图片
+        UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:selectedImage];
+        backgroundImageView.frame = self.view.bounds;
+        backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
+        [self.view insertSubview:backgroundImageView atIndex:0];
+
+        // 添加毛玻璃效果
+        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
+        self.blurEffectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+        self.blurEffectView.frame = self.view.bounds;
+        self.blurEffectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.blurEffectView.alpha = 0.7; // 自定义透明度
+        [backgroundImageView addSubview:self.blurEffectView];
+
+        UIVibrancyEffect *vibrancyEffect = [UIVibrancyEffect effectForBlurEffect:blurEffect];
+        self.vibrancyEffectView = [[UIVisualEffectView alloc] initWithEffect:vibrancyEffect];
+        self.vibrancyEffectView.frame = self.blurEffectView.bounds;
+        self.vibrancyEffectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self.blurEffectView.contentView addSubview:self.vibrancyEffectView];
+    }
+}
+
+- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
+    [picker dismissViewControllerAnimated:YES completion:nil];
 }
 
 @end
